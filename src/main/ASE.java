@@ -29,9 +29,7 @@ public class ASE {
 		connectToSimulator();
 		do {
 			runProgram();
-			if(stop)
-				break;
-		} while(true);
+		} while(!stop);
 		clientSocket.close();
 	}
 
@@ -101,18 +99,18 @@ public class ASE {
 	}
 
 	public static void runProgram() throws Exception {
-		getOprId();
-		getProductId();
+		setOprId();
+		setProductId();
 		weigh();
 		log();
 	}
 
-	public static void getOprId() throws Exception {
+	public static void setOprId() throws Exception {
 		int id = 0;
 		outToServer.writeBytes("RM20 4 \"Enter operator ID:\" \" \" \" 	\"" + END_INPUT);
 		if(!"RM20 B".equals(inFromServer.readLine())) {
 			generalError();
-			getOprId();
+			setOprId();
 			return;
 		}
 		String response = rm20(inFromServer.readLine());
@@ -120,19 +118,25 @@ public class ASE {
 			id = Integer.parseInt(response);
 		} catch(Exception e) {
 			numberError();
-			getOprId();
+			setOprId();
 			return;
 		}
+		//if(JDBC check om operatør findes)
 		oprId = id;
+		/**
+		 * else
+		 * idError();
+		 * setOprId
+		 */
 	}
 
-	public static void getProductId() throws Exception {
+	public static void setProductId() throws Exception {
 		int id = 0;
 		outToServer.writeBytes("RM20 4 \"Enter product ID:\" \" \" \" \"" + END_INPUT);
 		if(!"RM20 B".equals(inFromServer.readLine())) {
 			System.out.println("problem");
 			generalError();
-			getProductId();
+			setProductId();
 			return;
 		}
 		String response = rm20(inFromServer.readLine());
@@ -142,25 +146,27 @@ public class ASE {
 			System.out.println(response);
 			System.out.println(response);
 			numberError();
-			getProductId();
+			setProductId();
 			return;
 		}
-		if((id <= MAX_PRODUCT_ID) && (id >= MIN_PRODUCT_ID))
+		if((id <= MAX_PRODUCT_ID) && (id >= MIN_PRODUCT_ID)) {
 			productId = id;
+		}
 		else {
-			outToServer.writeBytes("D Invalid product ID" + END_INPUT);
-			getProductId();
+			idError();
+			setProductId();
 			return;
 		}
 		if(getProduct(productId)==0) {
-			outToServer.writeBytes("D Poduct ID doesn't exist" + END_INPUT);
-			getProductId();
+			idError();
+			setProductId();
 			return;
 		}
 		operatorCheck();
 	}
 
 	public static int getProduct(int id) throws Exception {
+//		skiftes til JDBC command
 		if(storeEntries.containsKey(id)) {
 			productName = storeEntries.get(id);
 			return id;
@@ -177,25 +183,28 @@ public class ASE {
 		}
 		String response = rm20(inFromServer.readLine());
 		if("n".equalsIgnoreCase(response)) {
-			getProductId();
+			setProductId();
 		}
 		else if(!"y".equalsIgnoreCase(response)) {
 			generalError();
-			getProductId();
+			setProductId();
 		}
+//		JDBC sæt produktstatus til optaget
 	}
 
 	public static void weigh() throws Exception {
+//		for(int i = 0; i < JDBC antal råvarer i recepten, i++)
 		tare();
 		fill();
 		empty();
 	}
 
 	public static void tare() throws Exception {
+//		find ud af at trykke ok
 		outToServer.writeBytes("RM20 8 \"Place container on the weight\" \" \" \"y/n\"" + END_INPUT);
 		if(!"RM20 B".equals(inFromServer.readLine())) {
 			generalError();
-			getProductId();
+			setProductId();
 			return;
 		}
 		String response = rm20(inFromServer.readLine());
@@ -218,10 +227,10 @@ public class ASE {
 	}
 
 	public static void fill() throws Exception {
-		outToServer.writeBytes("RM20 8 \"Place product in container\" \" \" \"y/n\"" + END_INPUT);
+		outToServer.writeBytes("RM20 4 \"Enter component ID\" \" \" \"\"" + END_INPUT);
 		if(!"RM20 B".equals(inFromServer.readLine())) {
 			generalError();
-			getProductId();
+			setProductId();
 			return;
 		}
 		String response = rm20(inFromServer.readLine());
@@ -247,7 +256,7 @@ public class ASE {
 		outToServer.writeBytes("RM20 8 \"Clear weight\" \" \" \"y/n\"" + END_INPUT);
 		if(!"RM20 B".equals(inFromServer.readLine())) {
 			generalError();
-			getProductId();
+			setProductId();
 			return;
 		}
 		String response = rm20(inFromServer.readLine());
@@ -284,6 +293,11 @@ public class ASE {
 
 	public static void generalError() throws Exception {
 		outToServer.writeBytes("D Illegal input" + END_INPUT);
+		Thread.sleep(1000);
+	}
+	
+	public static void idError() throws Exception {
+		outToServer.writeBytes("D ID not found" + END_INPUT);
 		Thread.sleep(1000);
 	}
 
